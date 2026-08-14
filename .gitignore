@@ -1,0 +1,19 @@
+# R / RStudio
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Data — reproducible via R/01-download.R
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Output
+output/*
+!output/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
