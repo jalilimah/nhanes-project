@@ -1,6 +1,5 @@
 # Merge DEMO_J with day 1 dietary recall
 # Left join onto DEMO: never inner_join before building the survey design
-
 library(nhanesA)
 library(tidyverse)
 
@@ -23,5 +22,12 @@ merged_all %>%
   group_by(age_grp) %>%
   mutate(pct = round(100 * n / sum(n), 1)) %>%
   filter(!has_recall)
+
+# WTDRD1 is NA for the 550 DEMO_J participants who never attended the MEC
+# and so have no dietary recall. Recoded to 0 rather than dropped: zero-weight
+# cases must stay in the design so the PSU/strata structure stays intact.
+# They contribute nothing to estimates but keep the variance structure correct.
+# NOTE: must run AFTER the nonresponse diagnostic above, which tests is.na().
+merged_all$WTDRD1[is.na(merged_all$WTDRD1)] <- 0
 
 saveRDS(merged_all, "data/processed/merged_all.rds")
