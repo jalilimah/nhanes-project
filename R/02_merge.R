@@ -1,10 +1,7 @@
+
 # Merge DEMO_J with day 1 dietary recall
 # Left join onto DEMO: never inner_join before building the survey design
-library(nhanesA)
-library(tidyverse)
-
-demo_j  <- nhanes("DEMO_J")
-diet1_j <- nhanes("DR1TOT_J")
+# Depends on: R/01_download.R (demo_j, diet1_j)
 
 merged_all <- demo_j %>%
   left_join(diet1_j, by = "SEQN")
