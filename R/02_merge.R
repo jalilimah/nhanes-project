@@ -20,11 +20,21 @@ merged_all %>%
   mutate(pct = round(100 * n / sum(n), 1)) %>%
   filter(!has_recall)
 
-# WTDRD1 is NA for the 550 DEMO_J participants who never attended the MEC
-# and so have no dietary recall. Recoded to 0 rather than dropped: zero-weight
-# cases must stay in the design so the PSU/strata structure stays intact.
-# They contribute nothing to estimates but keep the variance structure correct.
+# Both dietary weights are NA for participants with no corresponding recall.
+# Recoded to 0 rather than dropped: zero-weight cases must stay in the design
+# so the PSU/strata structure stays intact. They contribute nothing to
+# estimates but keep the variance structure correct.
+#
+# The two NA patterns arise from different mechanisms:
+#   WTDRD1 — 550 NAs, all DEMO_J participants who never attended the MEC.
+#            Non-response is inherited from the examination stage, not dietary.
+#   WTDR2D — 1,613 NAs, a superset: MEC non-attendance plus day-2 recall
+#            attrition. A further 1,002 have an exact zero rather than NA,
+#            already coded by NCHS as day-2 nonresponse. 6,639 positive.
+#
+# Same operation, same design-structure justification, different populations.
 # NOTE: must run AFTER the nonresponse diagnostic above, which tests is.na().
 merged_all$WTDRD1[is.na(merged_all$WTDRD1)] <- 0
+merged_all$WTDR2D[is.na(merged_all$WTDR2D)] <- 0
 
 saveRDS(merged_all, "data/processed/merged_all.rds")
