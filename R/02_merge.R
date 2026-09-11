@@ -1,15 +1,10 @@
-
 # Merge DEMO_J with day 1 dietary recall
-# Left join onto DEMO: never inner_join before building the survey design
+# Left join onto DEMO: never inner_join before building the survey design.
+# An inner join would silently drop the 550 MEC non-attendees.
 # Depends on: R/01_download.R (demo_j, diet1_j)
 
 merged_all <- demo_j %>%
   left_join(diet1_j, by = "SEQN")
-
-# Diagnostic only: shows what an inner_join would cost (550 people)
-merged_diet <- demo_j %>%
-  inner_join(diet1_j, by = "SEQN")
-
 
 # Both dietary weights are recoded from NA to 0 rather than dropped:
 # zero-weight cases must stay in the design so the PSU/strata structure
