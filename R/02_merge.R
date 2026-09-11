@@ -10,30 +10,21 @@ merged_all <- demo_j %>%
 merged_diet <- demo_j %>%
   inner_join(diet1_j, by = "SEQN")
 
-# Dietary recall nonresponse by age: mild U-shape, 5.0% to 7.8%
-merged_all %>%
-  mutate(has_recall = !is.na(WTDRD1),
-         age_grp = cut(RIDAGEYR, c(0, 5, 20, 60, 80),
-                       include.lowest = TRUE)) %>%
-  count(age_grp, has_recall) %>%
-  group_by(age_grp) %>%
-  mutate(pct = round(100 * n / sum(n), 1)) %>%
-  filter(!has_recall)
 
-# Both dietary weights are NA for participants with no corresponding recall.
-# Recoded to 0 rather than dropped: zero-weight cases must stay in the design
-# so the PSU/strata structure stays intact. They contribute nothing to
-# estimates but keep the variance structure correct.
+# Both dietary weights are recoded from NA to 0 rather than dropped:
+# zero-weight cases must stay in the design so the PSU/strata structure
+# stays intact. They contribute nothing to estimates but keep the
+# variance structure correct.
 #
 # The two NA patterns arise from different mechanisms:
 #   WTDRD1 — 550 NAs, all DEMO_J participants who never attended the MEC.
-#            Non-response is inherited from the examination stage, not dietary.
-#   WTDR2D — 1,613 NAs, a superset: MEC non-attendance plus day-2 recall
-#            attrition. A further 1,002 have an exact zero rather than NA,
-#            already coded by NCHS as day-2 nonresponse. 6,639 positive.
-#
-# Same operation, same design-structure justification, different populations.
-# NOTE: must run AFTER the nonresponse diagnostic above, which tests is.na().
+#            MEC attendees without a usable day-1 recall (976 not done,
+#            87 unreliable) already have an exact zero from NCHS.
+#   WTDR2D — 1,613 NAs = everyone outside the day-1 analytic sample
+#            (550 non-attendees + 976 not done + 87 unreliable).
+#            Day-2 attrition is the 1,002 exact zeros, coded by NCHS.
+#            6,639 positive. Total: 1,613 + 1,002 + 6,639 = 9,254.
+
 merged_all$WTDRD1[is.na(merged_all$WTDRD1)] <- 0
 merged_all$WTDR2D[is.na(merged_all$WTDR2D)] <- 0
 
