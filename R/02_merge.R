@@ -4,7 +4,8 @@
 # Depends on: R/01_download.R (demo_j, diet1_j)
 
 merged_all <- demo_j %>%
-  left_join(diet1_j, by = "SEQN")
+  left_join(diet1_j, by = "SEQN") %>%
+  left_join(select(diet2_j, -WTDRD1, -WTDR2D, -DRABF, -DRDINT), by = "SEQN")
 
 # Both dietary weights are recoded from NA to 0 rather than dropped:
 # zero-weight cases must stay in the design so the PSU/strata structure
