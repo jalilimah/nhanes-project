@@ -70,3 +70,4 @@ results_null <- bind_rows(
   mutate(ICC = sd_between^2 / (sd_between^2 + sd_within^2))
 
 results_null
+write_csv(results_null, "output/07_null_models_results.csv")
