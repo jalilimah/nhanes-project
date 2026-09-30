@@ -24,4 +24,9 @@ merged_all <- demo_j %>%
 merged_all$WTDRD1[is.na(merged_all$WTDRD1)] <- 0
 merged_all$WTDR2D[is.na(merged_all$WTDR2D)] <- 0
 
+# Age groups (needed by 05_estimates.R); created before saveRDS so every design built later has it
+merged_all <- merged_all %>%
+  mutate(age_grp = cut(RIDAGEYR, c(-Inf, 6, 20, 65, Inf), right = FALSE,
+                       labels = c("0-5", "6-19", "20-64", "65+")))
+
 saveRDS(merged_all, "data/processed/merged_all.rds")
