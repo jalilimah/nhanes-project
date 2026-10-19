@@ -44,16 +44,20 @@ res_race <- compare(kcal ~ RIAGENDR + age_c + day_f + RIDRETH3)
 # 4. DuMouchel–Duncan test: are the weights informative for this model?
 dd      <- svyglm(kcal ~ (RIAGENDR + age_c + day_f) * w10k, design = des_u)
 dd_test <- regTermTest(dd, ~ w10k + RIAGENDR:w10k + age_c:w10k + day_f:w10k)
+dd_age  <- regTermTest(dd, ~ age_c:w10k)   # single-term: does the age slope depend on the weight?
 
-res_dd <- tibble(F       = as.numeric(dd_test$Ftest),
-                 df_num  = dd_test$df,
-                 df_den  = dd_test$ddf,
-                 p       = as.numeric(dd_test$p),
+res_dd <- tibble(test    = c("joint (all weight terms)", "age_c:w10k only"),
+                 F       = c(as.numeric(dd_test$Ftest), as.numeric(dd_age$Ftest)),
+                 df_num  = c(dd_test$df,  dd_age$df),
+                 df_den  = c(dd_test$ddf, dd_age$ddf),
+                 p       = c(as.numeric(dd_test$p), as.numeric(dd_age$p)),
                  age_x_w = coef(dd)[["age_c:w10k"]])
+
 
 res_sex_age; res_age10; res_race; res_dd
 
 write_csv(res_sex_age, "output/09_sex_age_interaction.csv")
+res_age10 <- res_age10 |> mutate(across(where(is.array), as.numeric))
 write_csv(res_age10,   "output/09_age_decades.csv")
 write_csv(res_race,    "output/09_race_adjusted.csv")
 write_csv(res_dd,      "output/09_dumouchel_duncan.csv")
