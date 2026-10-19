@@ -22,6 +22,13 @@ m0_wn <- lmer(kcal ~ 1 + (1 | SEQN), data = long_adults, weights = w_norm)  # si
 m0_wemix <- mix(kcal ~ 1 + (1 | SEQN), data = long_adults,
                 weights = c("w_day", "WTDR2D"), cWeights = TRUE)
 
+
+# WARNING: svy2lme() here uses a person-level design (ids = ~SEQN): each person is
+# treated as a directly sampled unit, with no subsampling within PSUs. NHANES actually
+# samples persons within PSUs, so the PSU stage is ignored and these SEs are
+# person-level only (they can differ from PSU-based SEs; see 08). Design-based SEs
+# come from the PSU bootstrap below (boot2lme).
+
 # 4. svylme — pairwise likelihood, person as sampling unit
 des_person <- svydesign(ids = ~SEQN, strata = ~SDMVSTRA,
                         weights = ~WTDR2D, data = long_adults)
