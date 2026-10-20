@@ -1,4 +1,4 @@
-# 08_covariate_models.R — covariate mixed models: lmer vs svylme
+# 08_covariate_models.R — covariate mixed models: lmer vs svylme vs WeMix
 # Adults ≥ 20, two-day recall (long_adults from 06_long.R)
 # Model: kcal ~ sex + centred age + day + (1 | SEQN)
 
@@ -46,13 +46,27 @@ fe_check <- cbind(svyglm = coef(g_person), svylme = coef(m1_svylme),
 stopifnot(all.equal(fe_check[, "svyglm"], fe_check[, "svylme"]),
           all.equal(fe_check[, "lm"],     fe_check[, "lmer"]))
 
+
+
+# 6. WeMix — rescaled: WeMix is not scale-invariant; raw kcal gives a misleading
+#    "computationally singular / combine top level units" error
+la <- long_adults %>%
+  mutate(kcal_k = kcal / 1000, age_c10 = age_c / 10)
+m1_wemix_s <- mix(kcal_k ~ RIAGENDR + age_c10 + day_f + (1 | SEQN), data = la,
+                  weights = c("w_day", "WTDR2D"), cWeights = TRUE)
+sc <- c(1000, 1000, 100, 1000)   # back to kcal and kcal/year
+
 results_cov <- tibble(term       = names(fixef(m1_lmer)),
                       lmer       = fixef(m1_lmer),
                       lmer_SE    = sqrt(diag(vcov(m1_lmer))),
                       svylme     = coef(m1_svylme),
                       svylme_SE  = sqrt(diag(vcov(m1_svylme))),
+                      wemix      = unname(coef(m1_wemix_s)[1:4] * sc),
+                      wemix_SE   = unname(summary(m1_wemix_s)$coef[1:4, "Std. Error"] * sc),
                       boot_SE    = sqrt(diag(vcov(m1_boot))),
                       psu_lin_SE = SE(g_psu))
 
-results_cov
+stopifnot(all.equal(results_cov$wemix,    results_cov$svylme,    tolerance = 1e-4),
+          all.equal(results_cov$wemix_SE, results_cov$svylme_SE, tolerance = 1e-3))
+print(results_cov)
 write_csv(results_cov, "output/08_covariate_models_results.csv")
