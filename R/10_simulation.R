@@ -55,10 +55,15 @@ fit_all <- function(s) {
 }
 
 # 5. Replicate (R = 5 is a timing test only)
-R <- 5
+library(furrr)
+plan(multisession, workers = parallel::detectCores() - 1)
+R <- 2 * (parallel::detectCores() - 1)               # timing test: 2 reps per worker
 print(system.time(
-  res <- map_dfr(1:R, function(r) fit_all(draw_sample()) %>% mutate(rep = r))
+  res <- future_map_dfr(1:R, function(r) fit_all(draw_sample()) %>% mutate(rep = r),
+                        .options = furrr_options(seed = TRUE,
+                                                 packages = c("tidyverse", "lme4", "WeMix", "survey", "svylme")))
 ))
+plan(sequential)
 
 # 6. Compare with truth
 sim_summary <- res %>% left_join(truth, by = "term") %>%
