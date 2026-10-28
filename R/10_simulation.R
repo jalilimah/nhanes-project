@@ -1,5 +1,5 @@
 # 10_simulation.R — four estimators vs known truth (unbalanced pairs, informative weights)
-library(tidyverse); library(lme4); library(WeMix); library(survey); library(svylme)
+library(tidyverse); library(lme4); library(WeMix); library(survey); library(svylme); library(furrr)
 long_adults <- readRDS("data/processed/long_adults.rds")
 set.seed(2026)
 
@@ -20,7 +20,10 @@ pop_long <- pop %>% crossing(day = 1:2) %>%
 terms <- c("(Intercept)", "female", "age_c", "day_f2")
 truth <- tibble(term = terms,
                 truth = unname(coef(lm(kcal ~ female + age_c + factor(day), data = pop_long))))
-
+m_pop <- lmer(kcal ~ female + age_c + factor(day) + (1 | id), data = pop_long)
+truth <- bind_rows(truth,
+                   tibble(term = c("sigma2_u", "sigma2_e"),
+                          truth = as.data.frame(VarCorr(m_pop))$vcov))
 # 2-3. One sample: 2 PSUs per stratum, g oversampled 3x, 12% lose day 2
 draw_sample <- function() {
   chosen  <- pop %>% distinct(stratum, psu_id) %>% group_by(stratum) %>%
@@ -46,31 +49,46 @@ fit_all <- function(s) {
   des  <- svydesign(ids = ~id, strata = ~stratum, weights = ~w, data = s)
   m_sv <- suppressWarnings(svy2lme(f, design = des))
   sc   <- c(1000, 1000, 100, 1000)
+  # NEW: variance components; svylme L is the ratio sigma2_u / sigma2_e
+  vc <- tibble(est  = rep(c("lmer", "weighted lmer", "WeMix", "svylme"), each = 2),
+               term = rep(c("sigma2_u", "sigma2_e"), 4),
+               b    = c(as.data.frame(VarCorr(m_l))$vcov,
+                        as.data.frame(VarCorr(m_wl))$vcov,
+                        unname(m_wm$vars) * 1e6,
+                        as.numeric(m_sv$s2) * c(as.numeric(m_sv$L), 1)),
+               se   = NA_real_)
   bind_rows(
     tibble(est = "lmer",          term = terms, b = fixef(m_l),  se = sqrt(diag(as.matrix(vcov(m_l))))),
     tibble(est = "weighted lmer", term = terms, b = fixef(m_wl), se = sqrt(diag(as.matrix(vcov(m_wl))))),
     tibble(est = "WeMix",         term = terms, b = unname(coef(m_wm)[1:4] * sc),
            se = unname(summary(m_wm)$coef[1:4, "Std. Error"] * sc)),
-    tibble(est = "svylme",        term = terms, b = coef(m_sv),  se = sqrt(diag(vcov(m_sv)))))
+    tibble(est = "svylme",        term = terms, b = coef(m_sv),  se = sqrt(diag(vcov(m_sv)))),
+    vc)                                             # NEW: append vc rows
 }
 
-# 5. Replicate (R = 5 is a timing test only)
-library(furrr)
-plan(multisession, workers = parallel::detectCores() - 1)
-R <- 2 * (parallel::detectCores() - 1)               # timing test: 2 reps per worker
+# 5. Replicate (set R <- 8 for a timing test; R <- 1000 for the full run)
+R <- 8
+plan(multisession, workers = 4)
 print(system.time(
-  res <- future_map_dfr(1:R, function(r) fit_all(draw_sample()) %>% mutate(rep = r),
-                        .options = furrr_options(seed = TRUE,
-                                                 packages = c("tidyverse", "lme4", "WeMix", "survey", "svylme")))
+  res <- future_map_dfr(1:R, function(r) {
+    out <- tryCatch(fit_all(draw_sample()), error = function(e) NULL)   # failed fit -> dropped, counted in n_ok
+    if (!is.null(out)) mutate(out, rep = r)
+  }, .options = furrr_options(seed = TRUE,
+                              packages = c("tidyverse", "lme4", "WeMix", "survey", "svylme")))
 ))
 plan(sequential)
+saveRDS(res, sprintf("output/sim_res_R%d_%s.rds", R, Sys.Date()))
 
 # 6. Compare with truth
 sim_summary <- res %>% left_join(truth, by = "term") %>%
   group_by(est, term) %>%
-  summarise(bias     = mean(b - truth),
+  summarise(n_ok     = n(),
+            bias     = mean(b - truth),
+            rel_bias = bias / first(truth),
+            MCSE     = sd(b) / sqrt(n()),
             emp_SE   = sd(b),
             SE_ratio = mean(se) / sd(b),
             coverage = mean(abs(b - truth) < 1.96 * se), .groups = "drop")
 print(truth)
 print(sim_summary, n = Inf)
+
