@@ -67,7 +67,7 @@ fit_all <- function(s) {
 }
 
 # 5. Replicate (set R <- 8 for a timing test; R <- 1000 for the full run)
-R <- 8
+R <- 1000
 plan(multisession, workers = 4)
 print(system.time(
   res <- future_map_dfr(1:R, function(r) {
