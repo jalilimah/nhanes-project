@@ -67,17 +67,26 @@ fit_all <- function(s) {
 }
 
 # 5. Replicate (set R <- 8 for a timing test; R <- 1000 for the full run)
-R <- 1000
-plan(multisession, workers = 4)
-print(system.time(
-  res <- future_map_dfr(1:R, function(r) {
-    out <- tryCatch(fit_all(draw_sample()), error = function(e) NULL)   # failed fit -> dropped, counted in n_ok
-    if (!is.null(out)) mutate(out, rep = r)
-  }, .options = furrr_options(seed = TRUE,
-                              packages = c("tidyverse", "lme4", "WeMix", "survey", "svylme")))
-))
-plan(sequential)
-saveRDS(res, sprintf("output/sim_res_R%d_%s.rds", R, Sys.Date()))
+#    Saved replicates are reused on later runs; set rerun <- TRUE to simulate again.
+#    Safe because set.seed(2026) rebuilds the identical population and truth above.
+R        <- 1000
+rerun    <- FALSE
+res_file <- sprintf("output/10_sim_res_R%d.rds", R)
+
+if (file.exists(res_file) && !rerun) {
+  res <- readRDS(res_file)
+} else {
+  plan(multisession, workers = 4)
+  print(system.time(
+    res <- future_map_dfr(1:R, function(r) {
+      out <- tryCatch(fit_all(draw_sample()), error = function(e) NULL)   # failed fit -> dropped, counted in n_ok
+      if (!is.null(out)) mutate(out, rep = r)
+    }, .options = furrr_options(seed = TRUE,
+                                packages = c("tidyverse", "lme4", "WeMix", "survey", "svylme")))
+  ))
+  plan(sequential)
+  saveRDS(res, res_file)
+}
 
 # 6. Compare with truth
 sim_summary <- res %>% left_join(truth, by = "term") %>%
@@ -87,8 +96,21 @@ sim_summary <- res %>% left_join(truth, by = "term") %>%
             rel_bias = bias / first(truth),
             MCSE     = sd(b) / sqrt(n()),
             emp_SE   = sd(b),
+            RMSE     = sqrt(bias^2 + emp_SE^2),
             SE_ratio = mean(se) / sd(b),
-            coverage = mean(abs(b - truth) < 1.96 * se), .groups = "drop")
-print(truth)
-print(sim_summary, n = Inf)
+            coverage = mean(abs(b - truth) < 1.96 * se), .groups = "drop") %>%
+  arrange(term, est)
+saveRDS(sim_summary, "output/10_sim_summary.rds")
+
+# 7. Manuscript tables: fixed effects / variance components (no SEs for variance components)
+fmt <- function(d) d %>%
+  mutate(rel_bias = round(100 * rel_bias, 2),                       # percent
+         across(c(bias, MCSE, emp_SE, RMSE), ~ signif(.x, 3)),
+         across(any_of(c("SE_ratio", "coverage")), ~ round(.x, 3)))
+tab_fixed <- sim_summary %>% filter(term %in% terms) %>% fmt()
+tab_vc    <- sim_summary %>% filter(!term %in% terms) %>% select(-SE_ratio, -coverage) %>% fmt()
+
+write_csv(tab_fixed, "output/10_sim_table_fixed.csv")
+write_csv(tab_vc,    "output/10_sim_table_vc.csv")
+print(truth); print(as.data.frame(tab_fixed)); print(as.data.frame(tab_vc))
 
