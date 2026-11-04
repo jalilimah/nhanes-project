@@ -1,7 +1,14 @@
-# Merge DEMO_J with day 1 dietary recall
+# R/02_merge.R — merge DEMO_J with day 1 and day 2 dietary recall
 # Left join onto DEMO: never inner_join before building the survey design.
 # An inner join would silently drop the 550 MEC non-attendees.
-# Depends on: R/01_download.R (demo_j, diet1_j)
+# Input:  data/raw/{demo_j,diet1_j,diet2_j}.rds (01_download.R)
+# Output: data/processed/merged_all.rds (read by 03-06, 09)
+
+library(tidyverse)
+
+demo_j  <- readRDS("data/raw/demo_j.rds")
+diet1_j <- readRDS("data/raw/diet1_j.rds")
+diet2_j <- readRDS("data/raw/diet2_j.rds")
 
 merged_all <- demo_j %>%
   left_join(diet1_j, by = "SEQN") %>%
