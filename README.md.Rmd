@@ -1,0 +1,51 @@
+# Silent failures in survey-weighted mixed models: NHANES 2017–2018 two-day dietary recall
+
+## Hypothesis
+Default behaviours in standard R software produce **silent failures** when repeated
+measures are analysed under a complex survey design: analyses that run without error
+but give biased estimates, wrong standard errors, or an unstated change of target
+population. NHANES two-day dietary recall is the worked example, because it combines
+repeated measures (two recalls per person) with a stratified, clustered, unequally
+weighted design.
+
+## Estimators compared
+| Estimator | Weights | Design |
+|---|---|---|
+| `lme4::lmer` | none | ignored |
+| `lme4::lmer(weights = )` | read as *precision* weights (misapplied) | ignored |
+| `WeMix::mix` | sampling weights (pseudo-likelihood) | person level |
+| `svylme::svy2lme` | sampling weights (pairwise likelihood) | person level; PSU bootstrap for design-based SEs |
+
+## Data
+NHANES 2017–2018 (cycle J), public data from CDC/NCHS, downloaded with `nhanesA`:
+`DEMO_J`, `DR1TOT_J`, `DR2TOT_J`. Data are not stored in this repository;
+`R/01_download.R` fetches them (internet required).
+
+## Reproduce
+```r
+renv::restore()          # install the exact package versions in renv.lock
+source("run_all.R")      # runs R/01 to R/10 in order, each in a fresh environment
+```
+Each script is also standalone and reads its inputs from `data/` or `output/`.
+`R/10_simulation.R` reuses the saved replicates in `output/10_sim_res_R1000.rds`;
+set `rerun <- TRUE` inside it to re-simulate (several hours with 4 cores).
+
+## Scripts
+| Script | Purpose | Main output |
+|---|---|---|
+| `01_download.R` | Download the three NHANES tables | `data/raw/*.rds` |
+| `02_merge.R` | Left-join demographics and both recall days; recode NA weights to 0 | `data/processed/merged_all.rds` |
+| `03_design.R` | Day-1 survey design; kcal domain (excludes 157 breastfed infants) | `data/processed/diet_design.rds`, `kcal_design.rds` |
+| `04_design_2d.R` | Two-day design (reference only) | — |
+| `05_estimates.R` | Weighted vs naive means, t-tests, normal vs t intervals | console |
+| `06_long.R` | Adults ≥ 20 with both recalls, long format | `data/processed/long_adults.rds` |
+| `07_null_models.R` | Intercept-only model, four estimators | `output/07_null_models_results.csv` |
+| `08_covariate_models.R` | kcal ~ sex + age + day, four estimators + PSU bootstrap | `output/08_covariate_models_results.csv` |
+| `09_weight_diagnostics.R` | Why weighting halves the age slope; DuMouchel–Duncan test | `output/09_*.csv` |
+| `10_simulation.R` | 1,000-replicate simulation: bias, SE ratio, coverage, RMSE | `output/10_sim_table_*.csv` |
+
+## Environment
+R 4.6.1 (macOS, aarch64); package versions pinned in `renv.lock`.
+
+## Author
+Mahsa Jalili
