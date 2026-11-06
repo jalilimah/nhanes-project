@@ -15,7 +15,13 @@ long_adults <- readRDS("data/processed/long_adults.rds") %>%
 m0 <- lmer(kcal ~ 1 + (1 | SEQN), data = long_adults)
 
 # 2. Misapplied weighted lmer — sampling weights read as precision weights
-m0_w  <- lmer(kcal ~ 1 + (1 | SEQN), data = long_adults, weights = WTDR2D)  # warns
+# Raw weights: lmer treats them as precision weights and fails to converge.
+# Expected warnings are captured and checked, not printed (silent-failure demo, see m0_wn)
+w18 <- character()
+m0_w <- withCallingHandlers(
+  lmer(kcal ~ 1 + (1 | SEQN), data = long_adults, weights = WTDR2D),
+  warning = function(w) { w18 <<- c(w18, conditionMessage(w)); invokeRestart("muffleWarning") })
+stopifnot(any(grepl("converge", w18)))   # raw weights must warn; rescaled (m0_wn) must not
 m0_wn <- lmer(kcal ~ 1 + (1 | SEQN), data = long_adults, weights = w_norm)  # silent
 
 # 3. WeMix — weights at person level, day weight conditional = 1
