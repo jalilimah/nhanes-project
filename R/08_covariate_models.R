@@ -66,7 +66,7 @@ results_cov <- tibble(term       = names(fixef(m1_lmer)),
                       boot_SE    = sqrt(diag(vcov(m1_boot))),
                       psu_lin_SE = SE(g_psu))
 
-stopifnot(all.equal(results_cov$wemix,    results_cov$svylme,    tolerance = 1e-4),
-          all.equal(results_cov$wemix_SE, results_cov$svylme_SE, tolerance = 1e-3))
+stopifnot(all.equal(unname(results_cov$wemix),    unname(results_cov$svylme),    tolerance = 1e-4),
+          all.equal(unname(results_cov$wemix_SE), unname(results_cov$svylme_SE), tolerance = 1e-3))
 print(results_cov)
 write_csv(results_cov, "output/08_covariate_models_results.csv")
