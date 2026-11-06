@@ -21,3 +21,6 @@ output/*
 .DS_Store
 Thumbs.db
 *.jpeg
+
+# Personal logs and manuscript notes (local only)
+R/exploratory/
