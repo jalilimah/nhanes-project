@@ -1,0 +1,9 @@
+est,term,n_ok,bias,rel_bias,MCSE,emp_SE,RMSE
+WeMix,sigma2_e,1000,-1000,-0.21,390,12300,12400
+lmer,sigma2_e,1000,773,0.16,350,11100,11100
+svylme,sigma2_e,1000,-990,-0.21,392,12400,12400
+weighted lmer,sigma2_e,1000,-25400,-5.3,345,10900,27700
+WeMix,sigma2_u,1000,-249,-0.06,541,17100,17100
+lmer,sigma2_u,1000,264,0.07,471,14900,14900
+svylme,sigma2_u,1000,-247,-0.06,555,17500,17500
+weighted lmer,sigma2_u,1000,2960,0.75,475,15000,15300
